@@ -7,6 +7,3 @@ Style/StringLiterals:
 
 Style/StringLiteralsInInterpolation:
   EnforcedStyle: double_quotes
-
-Performance/OpenStruct:
-  Enabled: false
