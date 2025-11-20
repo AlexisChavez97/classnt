@@ -3,9 +3,11 @@
 require_relative "classnt/version"
 require_relative "classnt/result"
 
+# Main module for Classnt library providing pipeline and transaction utilities.
 module Classnt
   class Error < StandardError; end
 
+  # Exception raised to trigger a rollback in transactions when a Result is a failure.
   class Rollback < StandardError
     attr_reader :result
 

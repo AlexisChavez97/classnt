@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Classnt
+  # Represents the result of an operation, either :ok or :error/:failure.
   class Result
     attr_reader :type, :value
 
@@ -48,6 +49,7 @@ module Classnt
     end
   end
 
+  # Helper class for pattern matching on Result objects.
   class Matcher
     def initialize
       @success_handler = ->(v) { v }

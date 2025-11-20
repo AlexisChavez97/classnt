@@ -1,6 +1,9 @@
+# frozen_string_literal: true
+
 module CoffeeMachine
   extend Classnt::Pipeline
-  extend self
+
+  module_function
 
   def brew(coffee_type)
     Classnt.transaction do
@@ -29,15 +32,15 @@ module CoffeeMachine
   end
 
   def pour_into_cup(msg)
-    [:ok, msg.sub("Brewing", "Pouring") + " into cup"]
+    [:ok, "#{msg.sub("Brewing", "Pouring")} into cup"]
   end
 
   def add_sugar(msg)
-    [:ok, msg + " with sugar"]
+    [:ok, "#{msg} with sugar"]
   end
 
   def add_cream(msg)
-    [:ok, msg + " with cream"]
+    [:ok, "#{msg} with cream"]
   end
 
   def serve(msg)

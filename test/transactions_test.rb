@@ -7,8 +7,6 @@ module ActiveRecord
   class Base
     def self.transaction
       yield
-    rescue Classnt::Rollback => e
-      raise e
     end
   end
 end

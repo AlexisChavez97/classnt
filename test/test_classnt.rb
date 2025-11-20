@@ -9,8 +9,8 @@ class TestClassnt < Minitest::Test
 
   def test_basic_pipeline_success
     result = Classnt.pipe("espresso")
-                    .then { |v| [:ok, "#{v} ground"] }
-                    .then { |v| [:ok, "#{v} brewed"] }
+                    .then { |value| [:ok, "#{value} ground"] }
+                    .then { |value| [:ok, "#{value} brewed"] }
 
     assert_predicate result, :ok?
     assert_equal "espresso ground brewed", result.value
@@ -18,8 +18,8 @@ class TestClassnt < Minitest::Test
 
   def test_basic_pipeline_failure
     result = Classnt.pipe("espresso")
-                    .then { |v| [:error, "grinder jammed"] }
-                    .then { |v| [:ok, "should not happen"] }
+                    .then { |_value| [:error, "grinder jammed"] }
+                    .then { |_value| [:ok, "should not happen"] }
 
     assert_predicate result, :failure?
     assert_equal "grinder jammed", result.value
@@ -28,11 +28,12 @@ class TestClassnt < Minitest::Test
   def test_pipeline_with_methods
     # Testing .then(method(:name))
     tester = Object.new
-    def tester.step1(v)
-      [:ok, v + 1]
+    def tester.step1(value)
+      [:ok, value + 1]
     end
-    def tester.step2(v)
-      [:ok, v * 2]
+
+    def tester.step2(value)
+      [:ok, value * 2]
     end
 
     result = Classnt.pipe(1)
