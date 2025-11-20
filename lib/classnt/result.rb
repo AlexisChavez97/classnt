@@ -21,13 +21,15 @@ module Classnt
     # If the current result is ok, it yields the value to the block/proc.
     # The block/proc is expected to return a Tuple [:ok, val] or [:error, err]
     # OR a Result object.
-    def pipe(&block)
+    def pipe(callable = nil, &block)
       return self if failure?
 
-      result = block.call(@value)
+      callable ||= block
+      result = callable.call(@value)
       Classnt.wrap(result)
     end
 
+    alias then pipe
     alias then_pipe pipe
 
     def match

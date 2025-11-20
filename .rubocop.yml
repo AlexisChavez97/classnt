@@ -1,9 +1,12 @@
-inherit_gem:
-  rubocop-rails_config:
-    - config/rails.yml
-
 AllCops:
   TargetRubyVersion: 3.3
+  NewCops: enable
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
 
 Performance/OpenStruct:
   Enabled: false

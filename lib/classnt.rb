@@ -15,6 +15,23 @@ module Classnt
     end
   end
 
+  # Mixin for declarative pipeline usage
+  module Pipeline
+    def pipe(input, *steps)
+      steps.reduce(Classnt.ok(input)) do |result, step|
+        result.then do |value|
+          # If step is a symbol, try to call it as a method on the host module/class
+          if step.is_a?(Symbol)
+            send(step, value)
+          else
+            # Assume it's a callable (proc/lambda/method object)
+            step.call(value)
+          end
+        end
+      end
+    end
+  end
+
   module_function
 
   def ok(value)
@@ -23,6 +40,11 @@ module Classnt
 
   def error(value)
     Result.new(:error, value)
+  end
+
+  # Alias for starting a pipeline
+  def pipe(value)
+    ok(value)
   end
 
   # Wraps a raw tuple [:ok, val] or [:error, err] into a Result object.
