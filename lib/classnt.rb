@@ -2,6 +2,7 @@
 
 require_relative "classnt/version"
 require_relative "classnt/result"
+require_relative "classnt/dsl"
 
 # Main module for Classnt library providing pipeline and transaction utilities.
 module Classnt

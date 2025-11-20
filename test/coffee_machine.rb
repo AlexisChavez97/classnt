@@ -1,20 +1,15 @@
 # frozen_string_literal: true
 
 module CoffeeMachine
-  extend Classnt::Pipeline
+  extend Classnt::DSL
 
-  module_function
-
-  def brew(coffee_type)
-    Classnt.transaction do
-      pipe(coffee_type,
-           :grind_beans,
-           :brew_coffee,
-           :pour_into_cup,
-           :add_sugar,
-           :add_cream,
-           :serve)
-    end
+  pipeline :brew, transaction: true do
+    step :grind_beans
+    step :brew_coffee
+    step :pour_into_cup
+    step :add_sugar
+    step :add_cream
+    step :serve
   end
 
   # Reverted to positional args to support the clean symbol-based pipeline
