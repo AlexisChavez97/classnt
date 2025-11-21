@@ -2,12 +2,12 @@
 
 require "test_helper"
 
-class TestImprovements < Minitest::Test
+class TestPipelineFeatures < Minitest::Test
   module TestService
     extend Classnt::Pipeline
 
     pipeline :process_map, transaction: false do
-      step :upcase_val, map: true
+      map :upcase_val
     end
 
     pipeline :process_unsafe, transaction: false do

@@ -86,8 +86,12 @@ module Classnt
         @steps = []
       end
 
-      def step(name, map: false)
-        @steps << { name: name, map: map }
+      def step(name)
+        @steps << { name: name, map: false }
+      end
+
+      def map(name)
+        @steps << { name: name, map: true }
       end
     end
   end

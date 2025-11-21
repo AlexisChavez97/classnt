@@ -7,7 +7,7 @@ module CoffeeMachine
     step :grind_beans
     step :brew_coffee
     step :pour_into_cup
-    step :add_sugar, map: true
+    map :add_sugar
     step :add_cream
     step :serve
   end
