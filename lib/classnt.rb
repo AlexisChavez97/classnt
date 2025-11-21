@@ -106,6 +106,7 @@ module Classnt
       module_function(name) if is_a?(Module) && !is_a?(Class)
     end
 
+    # Builder class for creating pipeline steps DSL.
     class Builder
       attr_reader :steps
 
