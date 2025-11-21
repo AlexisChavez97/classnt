@@ -7,7 +7,7 @@ module CoffeeMachine
     step :grind_beans
     step :brew_coffee
     step :pour_into_cup
-    step :add_sugar
+    step :add_sugar, map: true
     step :add_cream
     step :serve
   end
@@ -33,7 +33,7 @@ module CoffeeMachine
   end
 
   def add_sugar(msg)
-    [:ok, "#{msg} with sugar"]
+    "#{msg} with sugar"
   end
 
   def add_cream(msg)

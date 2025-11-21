@@ -28,13 +28,17 @@ module Classnt
     def pipe(input, *steps)
       steps.reduce(Classnt.ok(input)) do |result, step|
         result.then do |value|
-          # If step is a symbol, try to call it as a method on the host module/class
-          if step.is_a?(Symbol)
-            send(step, value)
-          else
-            # Assume it's a callable (proc/lambda/method object)
-            step.call(value)
-          end
+          step_obj = step.is_a?(Hash) ? step[:name] : step
+          is_map = step.is_a?(Hash) ? step[:map] : false
+
+          output = if step_obj.is_a?(Symbol)
+                     send(step_obj, value)
+                   else
+                     # Assume it's a callable (proc/lambda/method object)
+                     step_obj.call(value)
+                   end
+
+          is_map ? Classnt.ok(output) : output
         end
       end
     end
@@ -43,8 +47,9 @@ module Classnt
     #
     # @param name [Symbol] The name of the method to generate.
     # @param transaction [Boolean] Whether to wrap the pipeline in a transaction.
+    # @param safe [Boolean] Whether to rescue StandardError and return a failure result.
     # @param block [Proc] The block defining the steps.
-    def pipeline(name, transaction: false, &)
+    def pipeline(name, transaction: false, safe: false, &)
       builder = Builder.new
       builder.instance_eval(&)
       steps = builder.steps
@@ -54,7 +59,13 @@ module Classnt
           # We use the `pipe` method.
           # If `self` is a module (service object), it has `pipe` via `extend Classnt::Pipeline`.
           # If `self` is an instance (class usage), it needs `include Classnt::Pipeline`.
-          pipe(input, *steps)
+          begin
+            pipe(input, *steps)
+          rescue StandardError => e
+            raise e unless safe
+
+            Classnt.error(e.message)
+          end
         }
 
         if transaction
@@ -75,8 +86,8 @@ module Classnt
         @steps = []
       end
 
-      def step(name)
-        @steps << name
+      def step(name, map: false)
+        @steps << { name: name, map: map }
       end
     end
   end
@@ -131,6 +142,7 @@ module Classnt
       end
     else
       # No ActiveRecord, just yield
+      warn "WARNING: Transaction requested but ActiveRecord not defined. Running without transaction."
       yield
     end
   rescue Rollback => e

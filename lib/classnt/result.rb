@@ -33,6 +33,12 @@ module Classnt
     alias then pipe
     alias then_pipe pipe
 
+    def map
+      return self if failure?
+
+      Classnt.ok(yield(@value))
+    end
+
     def match
       matcher = Matcher.new
       yield matcher
