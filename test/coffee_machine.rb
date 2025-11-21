@@ -3,19 +3,16 @@
 module CoffeeMachine
   extend Classnt::Pipeline
 
-  module_function
-
-  def brew(coffee_type)
-    Classnt.transaction do
-      pipe(coffee_type,
-           :grind_beans,
-           :brew_coffee,
-           :pour_into_cup,
-           :add_sugar,
-           :add_cream,
-           :serve)
-    end
+  pipeline :brew, transaction: true do
+    step :grind_beans
+    step :brew_coffee
+    step :pour_into_cup
+    map :add_sugar
+    step :add_cream
+    step :serve
   end
+
+  private
 
   # Reverted to positional args to support the clean symbol-based pipeline
   def grind_beans(coffee_type)
@@ -36,7 +33,7 @@ module CoffeeMachine
   end
 
   def add_sugar(msg)
-    [:ok, "#{msg} with sugar"]
+    "#{msg} with sugar"
   end
 
   def add_cream(msg)

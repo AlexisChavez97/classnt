@@ -10,6 +10,19 @@ Style/StringLiteralsInInterpolation:
 
 Metrics/MethodLength:
   Max: 20
+  Exclude:
+    - "lib/classnt.rb"
 
 Metrics/PerceivedComplexity:
   Max: 10
+
+Lint/StructNewOverride:
+  Enabled: false
+
+Metrics/AbcSize:
+  Exclude:
+    - "lib/classnt.rb"
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - "lib/classnt.rb"

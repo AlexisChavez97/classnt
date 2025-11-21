@@ -14,6 +14,12 @@ module Classnt
       @type == :ok
     end
 
+    def value!
+      return @value if ok?
+
+      raise Classnt::UnwrapError, @value
+    end
+
     def failure?
       @type == :error || @type == :failure
     end
@@ -33,6 +39,24 @@ module Classnt
     alias then pipe
     alias then_pipe pipe
 
+    def map
+      return self if failure?
+
+      Classnt.ok(yield(@value))
+    end
+
+    def on_success
+      yield(@value) if ok?
+      self
+    end
+
+    alias tap_ok on_success
+
+    def on_failure
+      yield(@value) if failure?
+      self
+    end
+
     def match
       matcher = Matcher.new
       yield matcher
@@ -46,6 +70,14 @@ module Classnt
 
     def unwrap
       [@type, @value]
+    end
+
+    def deconstruct
+      [@type, @value]
+    end
+
+    def deconstruct_keys(_keys)
+      { type: @type, value: @value }
     end
   end
 

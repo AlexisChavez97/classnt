@@ -42,4 +42,53 @@ class TestClassnt < Minitest::Test
 
     assert_equal 4, result.value
   end
+
+  def test_pattern_matching
+    result = Classnt.ok("matched")
+
+    case result
+    in [:ok, val]
+      assert_equal "matched", val
+    else
+      flunk "Pattern matching failed for array style"
+    end
+
+    case result
+    in { type: :ok, value: val }
+      assert_equal "matched", val
+    else
+      flunk "Pattern matching failed for hash style"
+    end
+  end
+
+  def test_side_effects
+    side_effect = nil
+    result = Classnt.ok("val")
+                    .on_success { |v| side_effect = "ok: #{v}" }
+                    .on_failure { |_| side_effect = "fail" }
+
+    assert_equal "ok: val", side_effect
+    assert_equal result, result # Ensure chaining returns self
+
+    side_effect = nil
+    Classnt.error("err")
+           .on_success { |_| side_effect = "ok" }
+           .on_failure { |v| side_effect = "fail: #{v}" }
+
+    assert_equal "fail: err", side_effect
+  end
+
+  def test_unsafe_unwrap
+    result = Classnt.ok("success")
+    assert_equal "success", result.value!
+
+    error = Classnt.error("boom")
+    assert_raises(Classnt::UnwrapError) { error.value! }
+
+    begin
+      error.value!
+    rescue Classnt::UnwrapError => e
+      assert_equal "boom", e.result_value
+    end
+  end
 end

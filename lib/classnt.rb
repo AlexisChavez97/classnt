@@ -7,6 +7,16 @@ require_relative "classnt/result"
 module Classnt
   class Error < StandardError; end
 
+  # Exception raised when unwrapping a failure result with value!.
+  class UnwrapError < Error
+    attr_reader :result_value
+
+    def initialize(value)
+      @result_value = value
+      super("Unwrapped failure result: #{value.inspect}")
+    end
+  end
+
   # Exception raised to trigger a rollback in transactions when a Result is a failure.
   class Rollback < StandardError
     attr_reader :result
@@ -19,17 +29,97 @@ module Classnt
 
   # Mixin for declarative pipeline usage
   module Pipeline
+    Step = Struct.new(:name, :map, :callable)
+
+    def self.extended(base)
+      # If extended into a Module (not a Class), make it behave like a service object
+      # where instance methods become class methods (like `extend self`).
+      base.extend(base) if base.instance_of?(Module)
+    end
+
     def pipe(input, *steps)
+      # Normalize steps to Step struct
+      steps = steps.map do |s|
+        case s
+        when Step then s
+        when Symbol then Step.new(s, false, nil)
+        when Hash then Step.new(s[:name], s[:map], nil)
+        else Step.new(nil, false, s) # Callable
+        end
+      end
+
       steps.reduce(Classnt.ok(input)) do |result, step|
         result.then do |value|
-          # If step is a symbol, try to call it as a method on the host module/class
-          if step.is_a?(Symbol)
-            send(step, value)
-          else
-            # Assume it's a callable (proc/lambda/method object)
-            step.call(value)
-          end
+          output = if step.name
+                     send(step.name, value)
+                   else
+                     step.callable.call(value)
+                   end
+
+          step.map ? Classnt.ok(output) : output
         end
+      end
+    end
+
+    # Defines a pipeline method on the host module/class.
+    #
+    # @param name [Symbol] The name of the method to generate.
+    # @param transaction [Boolean] Whether to wrap the pipeline in a transaction.
+    # @param safe [Boolean] Whether to rescue StandardError and return a failure result.
+    # @param block [Proc] The block defining the steps.
+    def pipeline(name, transaction: false, safe: false, &)
+      builder = Builder.new
+      builder.instance_eval(&)
+      steps = builder.steps
+
+      # Update: Accept a block (&block)
+      define_method(name) do |input, &block|
+        run_pipeline = lambda {
+          # We use the `pipe` method.
+          # If `self` is a module (service object), it has `pipe` via `extend Classnt::Pipeline`.
+          # If `self` is an instance (class usage), it needs `include Classnt::Pipeline`.
+          begin
+            pipe(input, *steps)
+          rescue StandardError => e
+            raise e unless safe
+
+            Classnt.error(e.message)
+          end
+        }
+
+        # Update: Capture the result first
+        result = if transaction
+                   Classnt.transaction(&run_pipeline)
+                 else
+                   run_pipeline.call
+                 end
+
+        # Update: If a block was passed, treat it as a match block
+        if block
+          result.match(&block)
+        else
+          result
+        end
+      end
+
+      # If we are in a module (but not a class), make it a module_function
+      module_function(name) if is_a?(Module) && !is_a?(Class)
+    end
+
+    # Builder class for creating pipeline steps DSL.
+    class Builder
+      attr_reader :steps
+
+      def initialize
+        @steps = []
+      end
+
+      def step(name)
+        @steps << Step.new(name, false, nil)
+      end
+
+      def map(name)
+        @steps << Step.new(name, true, nil)
       end
     end
   end
@@ -84,6 +174,7 @@ module Classnt
       end
     else
       # No ActiveRecord, just yield
+      warn "WARNING: Transaction requested but ActiveRecord not defined. Running without transaction."
       yield
     end
   rescue Rollback => e
