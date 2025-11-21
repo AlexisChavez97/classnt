@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module CoffeeMachine
-  extend Classnt::DSL
+  extend Classnt::Pipeline
 
   pipeline :brew, transaction: true do
     step :grind_beans
@@ -11,6 +11,8 @@ module CoffeeMachine
     step :add_cream
     step :serve
   end
+
+  private
 
   # Reverted to positional args to support the clean symbol-based pipeline
   def grind_beans(coffee_type)

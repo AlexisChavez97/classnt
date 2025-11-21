@@ -2,7 +2,6 @@
 
 require_relative "classnt/version"
 require_relative "classnt/result"
-require_relative "classnt/dsl"
 
 # Main module for Classnt library providing pipeline and transaction utilities.
 module Classnt
@@ -20,6 +19,12 @@ module Classnt
 
   # Mixin for declarative pipeline usage
   module Pipeline
+    def self.extended(base)
+      # If extended into a Module (not a Class), make it behave like a service object
+      # where instance methods become class methods (like `extend self`).
+      base.extend(base) if base.instance_of?(Module)
+    end
+
     def pipe(input, *steps)
       steps.reduce(Classnt.ok(input)) do |result, step|
         result.then do |value|
@@ -31,6 +36,47 @@ module Classnt
             step.call(value)
           end
         end
+      end
+    end
+
+    # Defines a pipeline method on the host module/class.
+    #
+    # @param name [Symbol] The name of the method to generate.
+    # @param transaction [Boolean] Whether to wrap the pipeline in a transaction.
+    # @param block [Proc] The block defining the steps.
+    def pipeline(name, transaction: false, &)
+      builder = Builder.new
+      builder.instance_eval(&)
+      steps = builder.steps
+
+      define_method(name) do |input|
+        run_pipeline = lambda {
+          # We use the `pipe` method.
+          # If `self` is a module (service object), it has `pipe` via `extend Classnt::Pipeline`.
+          # If `self` is an instance (class usage), it needs `include Classnt::Pipeline`.
+          pipe(input, *steps)
+        }
+
+        if transaction
+          Classnt.transaction(&run_pipeline)
+        else
+          run_pipeline.call
+        end
+      end
+
+      # If we are in a module (but not a class), make it a module_function
+      module_function(name) if is_a?(Module) && !is_a?(Class)
+    end
+
+    class Builder
+      attr_reader :steps
+
+      def initialize
+        @steps = []
+      end
+
+      def step(name)
+        @steps << name
       end
     end
   end

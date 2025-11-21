@@ -24,17 +24,19 @@ The ideas currently being explored include:
 
 ### Declarative Pipeline (Recommended)
 
-Use `Classnt::DSL` to define pipelines cleanly inside modules.
+Use `Classnt::Pipeline` to define pipelines cleanly inside modules.
 
 ```ruby
 module CoffeeMachine
-  extend Classnt::DSL
+  extend Classnt::Pipeline
 
   pipeline :brew, transaction: true do
     step :grind_beans
     step :brew_coffee
     step :pour_into_cup
   end
+
+  private
 
   def grind_beans(coffee_type)
     [:ok, "ground #{coffee_type}"]
@@ -44,7 +46,7 @@ module CoffeeMachine
 end
 ```
 
-When you `extend Classnt::DSL` in a module:
+When you `extend Classnt::Pipeline` in a module:
 1. It provides the `pipeline` macro.
 2. It automatically makes your instance methods available as class methods (similar to `module_function`), so you don't need extra boilerplate.
 
