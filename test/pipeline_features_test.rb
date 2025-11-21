@@ -35,14 +35,14 @@ class TestPipelineFeatures < Minitest::Test
 
   def test_result_map
     result = Classnt.ok("hello")
-    mapped = result.map { |v| v.upcase }
+    mapped = result.map(&:upcase)
 
     assert_predicate mapped, :ok?
     assert_equal "HELLO", mapped.value
 
     # Test that failure is propagated without mapping
     error = Classnt.error("oops")
-    mapped_error = error.map { |v| v.upcase }
+    mapped_error = error.map(&:upcase)
     assert_predicate mapped_error, :failure?
     assert_equal "oops", mapped_error.value
   end
@@ -61,5 +61,21 @@ class TestPipelineFeatures < Minitest::Test
     # Ensure it runs without error (warning will be printed to stderr)
     result = Classnt.transaction { [:ok, 1] }
     assert_equal [:ok, 1], result
+  end
+
+  def test_pipeline_block_matching
+    # Success case: process_map returns [:ok, "HELLO"]
+    result = TestService.process_map("hello") do |on|
+      on.success { |val| "Success: #{val}" }
+      on.failure { |_| "Failed" }
+    end
+    assert_equal "Success: HELLO", result
+
+    # Failure case: process_safe returns [:failure, "Boom"]
+    result = TestService.process_safe("go") do |on|
+      on.success { |_| "Should not happen" }
+      on.failure { |err| "Caught: #{err}" }
+    end
+    assert_equal "Caught: Boom", result
   end
 end

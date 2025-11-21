@@ -7,6 +7,16 @@ require_relative "classnt/result"
 module Classnt
   class Error < StandardError; end
 
+  # Exception raised when unwrapping a failure result with value!.
+  class UnwrapError < Error
+    attr_reader :result_value
+
+    def initialize(value)
+      @result_value = value
+      super("Unwrapped failure result: #{value.inspect}")
+    end
+  end
+
   # Exception raised to trigger a rollback in transactions when a Result is a failure.
   class Rollback < StandardError
     attr_reader :result
@@ -19,6 +29,8 @@ module Classnt
 
   # Mixin for declarative pipeline usage
   module Pipeline
+    Step = Struct.new(:name, :map, :callable)
+
     def self.extended(base)
       # If extended into a Module (not a Class), make it behave like a service object
       # where instance methods become class methods (like `extend self`).
@@ -26,19 +38,25 @@ module Classnt
     end
 
     def pipe(input, *steps)
+      # Normalize steps to Step struct
+      steps = steps.map do |s|
+        case s
+        when Step then s
+        when Symbol then Step.new(s, false, nil)
+        when Hash then Step.new(s[:name], s[:map], nil)
+        else Step.new(nil, false, s) # Callable
+        end
+      end
+
       steps.reduce(Classnt.ok(input)) do |result, step|
         result.then do |value|
-          step_obj = step.is_a?(Hash) ? step[:name] : step
-          is_map = step.is_a?(Hash) ? step[:map] : false
-
-          output = if step_obj.is_a?(Symbol)
-                     send(step_obj, value)
+          output = if step.name
+                     send(step.name, value)
                    else
-                     # Assume it's a callable (proc/lambda/method object)
-                     step_obj.call(value)
+                     step.callable.call(value)
                    end
 
-          is_map ? Classnt.ok(output) : output
+          step.map ? Classnt.ok(output) : output
         end
       end
     end
@@ -54,7 +72,8 @@ module Classnt
       builder.instance_eval(&)
       steps = builder.steps
 
-      define_method(name) do |input|
+      # Update: Accept a block (&block)
+      define_method(name) do |input, &block|
         run_pipeline = lambda {
           # We use the `pipe` method.
           # If `self` is a module (service object), it has `pipe` via `extend Classnt::Pipeline`.
@@ -68,10 +87,18 @@ module Classnt
           end
         }
 
-        if transaction
-          Classnt.transaction(&run_pipeline)
+        # Update: Capture the result first
+        result = if transaction
+                   Classnt.transaction(&run_pipeline)
+                 else
+                   run_pipeline.call
+                 end
+
+        # Update: If a block was passed, treat it as a match block
+        if block
+          result.match(&block)
         else
-          run_pipeline.call
+          result
         end
       end
 
@@ -87,11 +114,11 @@ module Classnt
       end
 
       def step(name)
-        @steps << { name: name, map: false }
+        @steps << Step.new(name, false, nil)
       end
 
       def map(name)
-        @steps << { name: name, map: true }
+        @steps << Step.new(name, true, nil)
       end
     end
   end
